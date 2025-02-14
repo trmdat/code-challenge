@@ -11,16 +11,18 @@ import { Loader2, RefreshCw } from "lucide-react";
 const CurrencySwapForm: React.FC = () => {
   const {
     handleSubmit,
-    setError,
     control,
+    watch,
     formState: { errors },
   } = useForm<FormData>();
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [tokens, setTokens] = useState<string[]>([]);
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [swappedAmount, setSwappedAmount] = useState<number | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const form = useForm();
+  const watchFields = watch(["fromCurrency", "toCurrency"]);
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -36,12 +38,13 @@ const CurrencySwapForm: React.FC = () => {
     fetchPrices();
   }, []);
 
-  const onSubmit = async (data: FormData) => {
-    if (data.fromCurrency === data.toCurrency) {
-      setError("toCurrency", { type: "manual", message: "Cannot swap the same currency" });
-      return;
+  useEffect(() => {
+    if (watchFields[0] && watchFields[1]) {
+      setIsDuplicate(watchFields[0] === watchFields[1]);
     }
+  }, [watchFields]);
 
+  const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600)).then(() => {
       const fromPrice = prices[data.fromCurrency];
@@ -67,16 +70,6 @@ const CurrencySwapForm: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="mb-4">
               <label className="block text-gray-700">From Currency</label>
-              {/* <select className="w-full p-2 border border-gray-300 rounded mt-1" {...register("fromCurrency", { required: true })}>
-              {tokens.map((token) => (
-                <option key={token} value={token} className="m-96">
-                  <div>
-                    <img src={`/tokens/${token}.svg`} alt={token} className="w-6 h-6 inline-block" />
-                    <p>{token}</p>
-                  </div>
-                </option>
-              ))}
-            </select> */}
               <Controller
                 name="fromCurrency"
                 control={control}
@@ -104,14 +97,6 @@ const CurrencySwapForm: React.FC = () => {
 
             <div className="mb-4">
               <label className="block text-gray-700">To Currency</label>
-              {/* <select className="w-full p-2 border border-gray-300 rounded mt-1" {...register("toCurrency", { required: true })}>
-              {tokens.map((token) => (
-                <option key={token} value={token}>
-                  <img src={`/tokens/${token}.svg`} alt={token} className="w-6 h-6 inline-block" />
-                  {token}
-                </option>
-              ))}
-            </select> */}
               <Controller
                 name="toCurrency"
                 control={control}
@@ -137,9 +122,10 @@ const CurrencySwapForm: React.FC = () => {
               {errors.toCurrency && <span className="text-red-500">{errors.toCurrency.message || "This field is required"}</span>}
             </div>
 
+            {isDuplicate && <span className="text-red-500 my-2">Cannot swap the same currency</span>}
+
             <div className="mb-4">
               <label className="block text-gray-700">Amount</label>
-              {/* <input type="number" className="w-full p-2 border border-gray-300 rounded mt-1" {...register("amount", { required: true, min: 0.01 })} /> */}
               <Controller
                 name="amount"
                 control={control}
@@ -165,8 +151,7 @@ const CurrencySwapForm: React.FC = () => {
               {errors.amount && <span className="text-red-500">{errors.amount.message ?? ""}</span>}
             </div>
 
-            <Button type="submit" className={`w-full bg-emerald-500 text-white text-md rounded-lg`} disabled={Object.keys(errors).length > 0}>
-              {/* {isLoading ? "Loading..." : "Swap"} */}
+            <Button type="submit" className={`w-full bg-emerald-500 text-white text-md rounded-lg`} disabled={Object.keys(errors).length > 0 || isDuplicate}>
               {isLoading ? (
                 <Loader2 className="animate-spin" />
               ) : (
